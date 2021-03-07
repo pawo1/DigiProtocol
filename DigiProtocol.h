@@ -86,8 +86,7 @@ private:
     void _releaseDevice();
 public:
     int _readByte(uint8_t &buffer, int timeout=1000);
-    int _readID(std::string &ID, int timeout=1000);
-
+    
 
     DigiProtocol(std::string ID="", int timeout=1000);
     ~DigiProtocol();
@@ -97,6 +96,7 @@ public:
     int listDevices(std::vector<std::string> &IDlist, int timeout=1000);
     int error();
     bool isOpen(int timeout=1000);
+	int readID(std::string &ID, int timeout=1000);
     int open(std::string ID="", int timeout=1000);
     void close();
 
@@ -226,7 +226,7 @@ inline int DigiProtocol::readMessage(std::string &message, int timeout) {
     return message.length();
 }
 
-inline int DigiProtocol::_readID(std::string &ID, int timeout) {
+inline int DigiProtocol::readID(std::string &ID, int timeout) {
 
     sendRequest(DP_SEND_ID);
 
@@ -379,7 +379,7 @@ inline int DigiProtocol::open(std::string ID, int timeout) {
                 if(_devHandle == NULL) return DP_ACCESS_ERROR;
 
                 std::string deviceID="";
-                result = _readID(deviceID, timeout);
+                result = readID(deviceID, timeout);
                 if( (result == DP_NEW_DEVICE && ID == "New Device without ID") || (result == DP_EEPROM_ERROR && ID == "Device with corrupted ID" ) ) {
                     libusb_free_device_list(_deviceList, 1);
                     return DP_NO_ERROR;
@@ -400,8 +400,7 @@ inline int DigiProtocol::open(std::string ID, int timeout) {
         libusb_free_device_list(_deviceList, 1);
     }
 
-    if(_devHandle == NULL)
-        return  DP_ERROR_NO_DEVICE;
+    return  DP_ERROR_NO_DEVICE;
 
 }
 
@@ -429,7 +428,7 @@ inline int DigiProtocol::listDevices(std::vector<std::string> &IDlist, int timeo
             if(_devHandle == NULL) return DP_ACCESS_ERROR;
 
             DigiProtocol::_devHandle = _devHandle;
-            result = DigiProtocol::_readID(ID, timeout);
+            result = DigiProtocol::readID(ID, timeout);
             if(result == DP_NEW_DEVICE) ID="New Device without ID";
             else if(result == DP_EEPROM_ERROR) ID="Device with corrupted ID";
             else if(result < 0) ID="ERROR";
