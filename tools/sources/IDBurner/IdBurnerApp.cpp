@@ -15,7 +15,11 @@ IMPLEMENT_APP(IdBurnerApp);
 bool IdBurnerApp::OnInit()
 {
     IdBurnerMain* frame = new IdBurnerMain(0L);
-    frame->SetIcon(wxICON(aaaa)); // To Set App Icon
+
+#ifdef _WIN32
+	frame->SetIcon(wxICON(aaaa)); // To Set App Icon
+#endif
+
     frame->Show();
 
     return true;

@@ -16,8 +16,11 @@ IMPLEMENT_APP(MonitorGUIApp);
 bool MonitorGUIApp::OnInit()
 {
     MonitorGUIFrame* frame = new MonitorGUIFrame(0L);
-    frame->SetIcon(wxICON(aaaa)); // To Set App Icon
-    frame->Show();
+    
+#ifdef _WIN32
+	frame->SetIcon(wxICON(aaaa)); // To Set App Icon
+#endif    
+	frame->Show();
 
 
     return true;

@@ -22,10 +22,15 @@
 #define DIGIPROTOCOL_H
 
 #include <string>
-#include <libusb.h>
 #include <chrono>
 #include <thread>
 #include <vector>
+
+#if defined _WIN32
+	#include <libusb.h>
+#else
+	#include <libusb-1.0/libusb.h>
+#endif
 
 
 // device VID/PID
@@ -74,8 +79,8 @@ class DigiProtocol {
 
 private:
     libusb_context* _context;
-    libusb_device_handle* _devHandle;
-    libusb_device** _deviceList;
+	libusb_device_handle* _devHandle;
+	libusb_device** _deviceList;
 	std::chrono::time_point<std::chrono::high_resolution_clock> _lastPing;
 	int _lastStatus;
     int _errorStatus;
@@ -109,6 +114,7 @@ inline DigiProtocol::DigiProtocol(std::string ID, int timeout) {
     _deviceList = NULL;
     _errorStatus = DP_NO_ERROR;
 	_lastPing = std::chrono::high_resolution_clock::now();
+	_lastStatus = DP_NO_DATA;
 
     libusb_init(&_context);
 
@@ -178,6 +184,7 @@ inline int DigiProtocol::readMessage(std::string &message, int timeout) {
 				_lastStatus = DP_ERROR_NO_RESPONSE;
 			}
 		}
+
         _releaseDevice();
         return _lastStatus;
 
@@ -228,7 +235,6 @@ inline int DigiProtocol::readMessage(std::string &message, int timeout) {
 
 inline int DigiProtocol::readID(std::string &ID, int timeout) {
 
-    sendRequest(DP_SEND_ID);
 
     int r=0;
     uint8_t byte=0;
@@ -250,6 +256,10 @@ inline int DigiProtocol::readID(std::string &ID, int timeout) {
 
     if(r != DP_NO_ERROR) return r;
 
+    sendRequest(DP_SEND_ID);
+	start = std::chrono::high_resolution_clock::now();
+	time = _timeDuration(start);
+
 
     while( ( byte != DP_ID_TRANSMISSION && byte != DP_BACKUP_TRANSMISSION && byte != DP_CORRUPTED_ID && byte != DP_NEW_DEVICE ) && (time < timeout || timeout == 0) ) {
         r = _readByte(byte, timeout - time);
@@ -270,10 +280,11 @@ inline int DigiProtocol::readID(std::string &ID, int timeout) {
         return DP_NEW_DEVICE;
     }
     if(byte == DP_BACKUP_TRANSMISSION) _errorStatus = DP_EEPROM_WARNING;
+	
 
     r = readMessage(ID, timeout);
     if(r < 0) {
-        _releaseDevice();
+        
         return r;
     }
 
@@ -345,6 +356,8 @@ inline bool DigiProtocol::isOpen(int timeout) {
 
         time = _timeDuration(start);
     }
+
+	_releaseDevice();
 
     if(byte != DP_STATUS_ALIVE) {
         //close();
@@ -448,7 +461,9 @@ inline int DigiProtocol::listDevices(std::vector<std::string> &IDlist, int timeo
 }
 
 inline int DigiProtocol::_claimDevice() {
+	libusb_detach_kernel_driver(_devHandle, 0);
     int r = libusb_claim_interface(_devHandle, 0);
+
     if(r == 0)
         return DP_NO_ERROR;
 
@@ -457,6 +472,7 @@ inline int DigiProtocol::_claimDevice() {
 
 inline void DigiProtocol::_releaseDevice() {
     libusb_release_interface(_devHandle, 0);
+	libusb_attach_kernel_driver(_devHandle, 0);
 }
 
 #endif // DIGIPROTOCOL_H
